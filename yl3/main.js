@@ -20,19 +20,29 @@ var tasks = [
 let lastTaskId = 2;
 let taskList;
 let addTask;
+let loginButton;
 
 // kui leht on brauseris laetud siis lisame esimesed taskid lehele
 window.addEventListener('load', async () => {
     taskList = document.querySelector('#task-list');
     addTask = document.querySelector('#add-task');
+    loginButton = document.querySelector('#login-submit');
+    usernameInput = document.querySelector('#username');
+    passwordInput = document.querySelector('#password');
+
+    loginButton.addEventListener('click', () => {
+        console.log('login clicked');
+        console.log(usernameInput.value);
+        console.log(passwordInput.value);
+    });
 
     await loadInExistingTasks();
 
     tasks.forEach(renderTask);
 
-    tasks.forEach(element => {
-        console.log(element.name);
-    });
+    // tasks.forEach(element => {
+    //     console.log(element.name);
+    // });
 
     // kui nuppu vajutatakse siis lisatakse uus task
     addTask.addEventListener('click', async () => {
@@ -72,6 +82,9 @@ function createTask() {
     return task;
 }
 
+/**
+ * See funktsioon teeb fetchiga API requesti. Ootab operatsiooni: 'create', 'read', 'update', 'delete' | URLi pathi, kuhu request saata, ntks: 'tasks' | vahepealsed parameetrid vajaduspõhiselt, kui ei taha kasutada siis null | returnFetchResponseResult = true, kui soovid reponsega midagi edasi teha.
+ */
 function sendAPIRequest(operation, requestPath, taskId, taskTitle, taskIsCompleted, returnFetchResponseResult){
 
     let URL = `https://demo2.z-bit.ee`;
@@ -190,6 +203,7 @@ function createTaskRow(task) {
     // Täidame vormi väljad andmetega
     const name = taskRow.querySelector("[name='name']");
     name.innerText = task.name;
+    name.body = task.name;
 
     const checkbox = taskRow.querySelector("[name='completed']");
     checkbox.checked = task.completed;
