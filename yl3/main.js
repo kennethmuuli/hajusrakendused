@@ -1,6 +1,7 @@
 //TO-DO:
 //Bug when creating new tasks and clicking their checkboxes (PutTask), before refresh, should reload page after task creation to pull to update to current task list
 //Bug when creating new tasks and deleting them (sendDelete), before refresh, should reload page after task creation to pull to update to current task list
+//Error (doesn't seem to affect functionality), @error SyntaxError: Unexpected end of JSON input at main.js:119:32
 
 //Current task list
 var tasks = [
@@ -42,7 +43,7 @@ window.addEventListener('load', async () => {
 });
 
 async function loadInExistingTasks(){
-    await sendTasksRead().then(result => { 
+    await sendAPIRequest('read', 'tasks', null, null, null, true).then(result => { 
             for (let i = 0; i < result.length; i++) {
                 const task = {
                     id: result[i].id,
@@ -66,38 +67,34 @@ function createTask() {
         name: 'Task ' + lastTaskId,
         completed: false
     };
-    sendTaskCreate(task.name);
+    // sendTaskCreate(task.name);
+    sendAPIRequest('create', 'tasks', null, task.name);
     return task;
 }
 
-async function sendTasksRead () {
-    const result = fetch("https://demo2.z-bit.ee/tasks", createRequestOptions('read'))
-      .then(response => response.json())
-      .catch(error => console.log('error', error));
+function sendAPIRequest(operation, requestPath, taskId, taskTitle, taskIsCompleted, returnFetchResponseResult){
 
-    return result;
-}
+    let URL = `https://demo2.z-bit.ee`;
 
-async function sendTaskCreate(title) {
-    fetch("https://demo2.z-bit.ee/tasks", createRequestOptions('create', title))
-    .then(response => response.text())
+    //Vastavalt ette antule liidan URLile õige id ja path VÕI ainult pathi
+    if (requestPath != null && taskId != null) {
+
+        URL = [URL, requestPath, taskId].join('/');
+        console.log(URL)
+    }
+    else if (requestPath != null && taskId == null) {
+        URL = [URL, requestPath].join('/');
+        console.log(URL)
+    }
+
+    const result = fetch(URL, createRequestOptions(operation, taskTitle, taskIsCompleted))
+    .then(response => response.json())
     // .then(result => console.log(result))
     .catch(error => console.log('error', error));
-}
 
-function sendTaskUpdate(title, isCompleted, id) {
-    fetch(`https://demo2.z-bit.ee/tasks/${id}`, createRequestOptions('update', title, isCompleted))
-    .then(response => response.text())
-    // .then(result => console.log(result))
-    .catch(error => console.log('error', error));
-}
-
-function sendTaskDelete (id) {
-
-    fetch(`https://demo2.z-bit.ee/tasks/${id}`, createRequestOptions('delete'))
-    .then(response => response.text())
-    // .then(result => console.log(result))
-    .catch(error => console.log('error', error));
+    if (returnFetchResponseResult) {
+        return result;
+    }
 }
 
 /* Seatud headerite testimiseks */
@@ -197,14 +194,17 @@ function createTaskRow(task) {
     const checkbox = taskRow.querySelector("[name='completed']");
     checkbox.checked = task.completed;
     checkbox.addEventListener('click', () => {
-        sendTaskUpdate(task.name, !task.completed, task.id);
+        //!bool to reverse boolean's current value, whatever it may be
+        // sendTaskUpdate(task.name, !task.completed, task.id);
+        sendAPIRequest('update', 'tasks', task.id, task.name, !task.completed);
     });
 
     const deleteButton = taskRow.querySelector('.delete-task');
-    deleteButton.addEventListener('click', () => {
+    deleteButton.addEventListener('click', async () => {
         taskList.removeChild(taskRow);
         tasks.splice(tasks.indexOf(task), 1);
-        sendTaskDelete(task.id);
+        // await sendTaskDelete(task.id);
+        await sendAPIRequest('delete', 'tasks', task.id);
     });
 
     // Valmistame checkboxi ette vajutamiseks
