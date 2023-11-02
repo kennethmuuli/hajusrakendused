@@ -1,7 +1,9 @@
 
 const fs = require('fs');
 const http = require('http');
-let path = 'C:/Users/u-469/Desktop/tunnis/koolirepo/hajus_rakendused/varuosad_projekt/LE.txt';
+// const querystring = require('querystring');
+// const URLSearchParams = window.URLSearchParams;
+let path = './LE.txt';
  
 const hostname = '127.0.0.1';
 const port = 3000;
@@ -30,23 +32,68 @@ for (let i = 0; i < rows.length; i++) {
     }
     parsedData.push(obj);
 }
-
-let jsonObj = parsedData.slice(0,10);
-
-jsonObj = JSON.stringify(parsedData);
-
-console.log(jsonObj);
-
  
 const server = http.createServer((req, res) => {
-    // console.log(data)
     res.statusCode = 200;
     res.setHeader('Content-Type', 'text/plain');
     
-    res.end(jsonObj);
+    if (req.url == "/favicon.ico") {
+        return;
+    }
+    res.end(readParams(req.url));
     
 });
+
+function readParams(paramsStringRaw) {
+    let paramsString = paramsStringRaw.slice(2)
+    
+    let params = new URLSearchParams(paramsString);
+    let name = params.get("name");
+    let id = params.get("id");
+
+    return search(name, id);
+
+
+}
+
+function search (name, id) {
+    let searchResult = [];
+
+    console.log(name,id)
+
+    if (name != null && id != null) {
+        for (let i = 0; i < parsedData.length; i++) {
+            
+            if (parsedData[i].name.includes(name) && parsedData[i].serial == id) {
+                searchResult.push(parsedData[i])
+            }
+        }
+    }
+    else if (name != null) {
+        for (let i = 0; i < parsedData.length; i++) {
  
+            if (parsedData[i].name.includes(name)) {
+                searchResult.push(parsedData[i])
+            }
+    
+        }
+    }
+    else if (id != null) {
+        for (let i = 0; i < parsedData.length; i++) {
+            
+            if (parsedData[i].serial == id) {
+                searchResult.push(parsedData[i])
+            }
+    
+        }
+    }
+    
+    searchResult = JSON.stringify(searchResult);
+    console.log(searchResult);
+    
+    return searchResult;
+}
+
 server.listen(port, hostname, () => {
   console.log(`Server running at http://${hostname}:${port}/`);
 });
