@@ -3,46 +3,51 @@
 //Bug when creating new tasks and deleting them (sendDelete), before refresh, should reload page after task creation to pull to update to current task list
 //Error (doesn't seem to affect functionality), @error SyntaxError: Unexpected end of JSON input at main.js:119:32
 
+//Kasutajaandmete krüptimiseks
+//bcrypt.generateString(32)
+
 //Current task list
 var tasks = [
+    // Algne task struktuur
     // {
     //     id: 1,
     //     name: 'Task 1',
     //     completed: false
     // },
-    // {
-    //     id: 2,
-    //     name: 'Task 2',
-    //     completed: true
-    // }
 ];
 
 let lastTaskId = 2;
 let taskList;
 let addTask;
 let loginButton;
+let logoutButton;
 
 // kui leht on brauseris laetud siis lisame esimesed taskid lehele
 window.addEventListener('load', async () => {
     taskList = document.querySelector('#task-list');
     addTask = document.querySelector('#add-task');
     loginButton = document.querySelector('#login-submit');
+    logoutButton = document.querySelector('#logout-submit');
     usernameInput = document.querySelector('#username');
     passwordInput = document.querySelector('#password');
 
-    loginButton.addEventListener('click', () => {
+    loginButton.addEventListener('click', (event) => {
+        //Keela vormi sumbit nupu default action, mis muidu lehte värskendab
+        event.preventDefault();
         console.log('login clicked');
-        console.log(usernameInput.value);
-        console.log(passwordInput.value);
+        login(usernameInput.value, passwordInput.value);
+    });
+
+    logoutButton.addEventListener('click', (event) => {
+        //Keela vormi sumbit nupu default action, mis muidu lehte värskendab
+        event.preventDefault();
+        console.log('logout clicked');
+        localStorage.clear();
     });
 
     await loadInExistingTasks();
 
     tasks.forEach(renderTask);
-
-    // tasks.forEach(element => {
-    //     console.log(element.name);
-    // });
 
     // kui nuppu vajutatakse siis lisatakse uus task
     addTask.addEventListener('click', async () => {
@@ -52,12 +57,42 @@ window.addEventListener('load', async () => {
     });
 });
 
+/* Järgmise reaga vaadata hetkel olemasolevat tokenit, kui pole sisse logitud siis null, kui oled sisse logitud siis kuvab token konsooli*/
+console.log(localStorage.getItem('token'));
+
+
+async function login(username, password) {
+    console.log('this')
+    var myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/json");
+
+    var raw = JSON.stringify({
+    "username": username,
+    "password": password
+    });
+
+    var requestOptions = {
+    method: 'POST',
+    headers: myHeaders,
+    body: raw,
+    redirect: 'follow'
+    };
+
+    await fetch("https://demo2.z-bit.ee/users/get-token", requestOptions)
+    .then(response => response.json())
+    .then(result => {
+        localStorage.setItem('token', result.access_token);
+    })
+    .catch(error => console.log('error', error));
+
+}
+
 async function loadInExistingTasks(){
     await sendAPIRequest('read', 'tasks', null, null, null, true).then(result => { 
             for (let i = 0; i < result.length; i++) {
                 const task = {
                     id: result[i].id,
-                    name: result[i].title + result[i].id,
+                    name: result[i].title,
                     completed: result[i].marked_as_done
                 };
                 tasks.push(task);
@@ -77,7 +112,6 @@ function createTask() {
         name: 'Task ' + lastTaskId,
         completed: false
     };
-    // sendTaskCreate(task.name);
     sendAPIRequest('create', 'tasks', null, task.name);
     return task;
 }
@@ -120,14 +154,15 @@ function sendAPIRequest(operation, requestPath, taskId, taskTitle, taskIsComplet
 function createRequestOptions(operation, title, isCompleted) {
     var myHeaders = new Headers();
 
-    //Auth headers w. bearer token, same for all
-    myHeaders.append("Authorization", "Bearer lDqWakUjb7u4XfHEJqgwuHS1h3BN3NLC");
+    //Sea autoriseerimise token
+    myHeaders.append("Authorization", `Bearer ${localStorage.getItem('token')}`);
+    console.log(`Bearer ${localStorage.getItem('token')}`)
 
     switch (operation) {
         case 'create':
             //postAddTask
             myHeaders.append("Content-Type", "application/json");
-            myHeaders.append("Cookie", "PHPSESSID=9smfd1sssgvpgn3soeasd3dukv; _csrf=5da41a833673c3919987a659d739ffde0edbdf5257f6be6a9b6f30ee2941840da%3A2%3A%7Bi%3A0%3Bs%3A5%3A%22_csrf%22%3Bi%3A1%3Bs%3A32%3A%22ogjhMznfN0jwByY3KccgrCayIt7OWYrh%22%3B%7D");
+            // myHeaders.append("Cookie", "PHPSESSID=9smfd1sssgvpgn3soeasd3dukv; _csrf=5da41a833673c3919987a659d739ffde0edbdf5257f6be6a9b6f30ee2941840da%3A2%3A%7Bi%3A0%3Bs%3A5%3A%22_csrf%22%3Bi%3A1%3Bs%3A32%3A%22ogjhMznfN0jwByY3KccgrCayIt7OWYrh%22%3B%7D");
             
             var callBody = JSON.stringify({
                 "title": title,
@@ -144,7 +179,7 @@ function createRequestOptions(operation, title, isCompleted) {
             return requestOptions;
         case 'read':
             //requestExisiting
-            myHeaders.append("Cookie", "PHPSESSID=9smfd1sssgvpgn3soeasd3dukv; _csrf=21ebf6d3baf06082b9abf9907660ad9ca55ac75d3ad171c6e0fe9b2e2f52fd7ca%3A2%3A%7Bi%3A0%3Bs%3A5%3A%22_csrf%22%3Bi%3A1%3Bs%3A32%3A%22_XMkFH8zEX8duOiZiFG7CzY2lWfbX2Ck%22%3B%7D");
+            // myHeaders.append("Cookie", "PHPSESSID=9smfd1sssgvpgn3soeasd3dukv; _csrf=21ebf6d3baf06082b9abf9907660ad9ca55ac75d3ad171c6e0fe9b2e2f52fd7ca%3A2%3A%7Bi%3A0%3Bs%3A5%3A%22_csrf%22%3Bi%3A1%3Bs%3A32%3A%22_XMkFH8zEX8duOiZiFG7CzY2lWfbX2Ck%22%3B%7D");
 
             var callBody;
 
@@ -159,7 +194,7 @@ function createRequestOptions(operation, title, isCompleted) {
         case 'update':
             //putTask
             myHeaders.append("Content-Type", "application/json");
-            myHeaders.append("Cookie", "PHPSESSID=9smfd1sssgvpgn3soeasd3dukv; _csrf=ef7f43f484f5a507a05686f7fb12df9341609ecbfe09f753a56245af072f83f5a%3A2%3A%7Bi%3A0%3Bs%3A5%3A%22_csrf%22%3Bi%3A1%3Bs%3A32%3A%22S8XGwkj1cu81xdCtqtlOfhNAjJvsNsSL%22%3B%7D");
+            // myHeaders.append("Cookie", "PHPSESSID=9smfd1sssgvpgn3soeasd3dukv; _csrf=ef7f43f484f5a507a05686f7fb12df9341609ecbfe09f753a56245af072f83f5a%3A2%3A%7Bi%3A0%3Bs%3A5%3A%22_csrf%22%3Bi%3A1%3Bs%3A32%3A%22S8XGwkj1cu81xdCtqtlOfhNAjJvsNsSL%22%3B%7D");
             
             var callBody = JSON.stringify({
                 "title": title,
@@ -176,7 +211,7 @@ function createRequestOptions(operation, title, isCompleted) {
             return requestOptions;
         case 'delete':
             //sendDelete
-            myHeaders.append("Cookie", "PHPSESSID=9smfd1sssgvpgn3soeasd3dukv; _csrf=cd19049caf986fd25720c7f8db310e7213f5b17f47d4512ae2ff58b0fa07a5ada%3A2%3A%7Bi%3A0%3Bs%3A5%3A%22_csrf%22%3Bi%3A1%3Bs%3A32%3A%22o25mKeUWULcKHsKNxDh-4_eOFhAR2gxS%22%3B%7D");
+            // myHeaders.append("Cookie", "PHPSESSID=9smfd1sssgvpgn3soeasd3dukv; _csrf=cd19049caf986fd25720c7f8db310e7213f5b17f47d4512ae2ff58b0fa07a5ada%3A2%3A%7Bi%3A0%3Bs%3A5%3A%22_csrf%22%3Bi%3A1%3Bs%3A32%3A%22o25mKeUWULcKHsKNxDh-4_eOFhAR2gxS%22%3B%7D");
             
             var raw;
 
@@ -202,22 +237,33 @@ function createTaskRow(task) {
 
     // Täidame vormi väljad andmetega
     const name = taskRow.querySelector("[name='name']");
-    name.innerText = task.name;
-    name.body = task.name;
+    // name.innerText = task.name;
+    name.value = task.name;
+    name.addEventListener('blur', () => {
+        // console.log('input clicked')
+        let clickAway;
+        //Hetkel läheb click away event kõigi külge. Võiks lisada input väljale alles peale selle klikkimist, et vältida absurdselt paljusid päringuid
+        // clickAway = document.body.addEventListener('mouseup', function clickOff() {
+        //     console.log('clicked away from task input');
+            sendAPIRequest('update', 'tasks', task.id, name.value);
+            //Eemaldan eventlisteneri registreeritutest, muidu antud koodiga muudkui lisab neid iga input clickiga juurde
+            // clickAway = document.body.removeEventListener('mouseup', clickOff);
+
+            // 'blur'
+        // }); 
+    });
 
     const checkbox = taskRow.querySelector("[name='completed']");
     checkbox.checked = task.completed;
     checkbox.addEventListener('click', () => {
         //!bool to reverse boolean's current value, whatever it may be
-        // sendTaskUpdate(task.name, !task.completed, task.id);
-        sendAPIRequest('update', 'tasks', task.id, task.name, !task.completed);
+        sendAPIRequest('update', 'tasks', task.id, name.value, !task.completed);
     });
 
     const deleteButton = taskRow.querySelector('.delete-task');
     deleteButton.addEventListener('click', async () => {
         taskList.removeChild(taskRow);
         tasks.splice(tasks.indexOf(task), 1);
-        // await sendTaskDelete(task.id);
         await sendAPIRequest('delete', 'tasks', task.id);
     });
 
@@ -226,8 +272,6 @@ function createTaskRow(task) {
 
     return taskRow;
 }
-
-
 
 
 function createAntCheckbox() {
